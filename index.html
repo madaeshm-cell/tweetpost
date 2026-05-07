@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- Navigation Header -->
     <header class="header">
         <div class="container">
             <div class="header-content">
@@ -22,108 +21,72 @@
                 </div>
                 
                 <div class="search-bar">
-                    <input 
-                        type="text" 
-                        id="searchInput" 
-                        placeholder="Search news..."
-                        autocomplete="off"
-                    >
-                    <button id="searchBtn">
-                        <i class="fas fa-search"></i>
-                    </button>
+                    <input type="text" id="searchInput" placeholder="Search news..." autocomplete="off">
+                    <button id="searchBtn"><i class="fas fa-search"></i></button>
                 </div>
 
                 <div class="header-controls">
-                    <button id="themeToggle" class="theme-toggle">
-                        <i class="fas fa-moon"></i>
-                    </button>
-                    <button id="refreshBtn" class="refresh-btn">
-                        <i class="fas fa-sync"></i>
-                    </button>
-                    <span id="lastUpdate" class="last-update">Updating...</span>
+                    <button id="themeToggle" class="theme-toggle"><i class="fas fa-moon"></i></button>
+                    <button id="refreshBtn" class="refresh-btn"><i class="fas fa-sync"></i></button>
+                    <span id="lastUpdate" class="last-update">Loading...</span>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Category Filter -->
     <nav class="category-nav">
         <div class="container">
             <div class="categories">
-                <button class="category-btn active" data-category="all">
-                    <i class="fas fa-globe"></i> All News
-                </button>
-                <button class="category-btn" data-category="entertainment">
-                    <i class="fas fa-film"></i> Entertainment
-                </button>
-                <button class="category-btn" data-category="politics">
-                    <i class="fas fa-landmark"></i> Politics
-                </button>
-                <button class="category-btn" data-category="finance">
-                    <i class="fas fa-chart-line"></i> Finance
-                </button>
-                <button class="category-btn" data-category="tech">
-                    <i class="fas fa-microchip"></i> Tech
-                </button>
-                <button class="category-btn" data-category="rumors">
-                    <i class="fas fa-question-circle"></i> Rumors
-                </button>
+                <button class="category-btn active" data-category="all"><i class="fas fa-globe"></i> All News</button>
+                <button class="category-btn" data-category="entertainment"><i class="fas fa-film"></i> Entertainment</button>
+                <button class="category-btn" data-category="politics"><i class="fas fa-landmark"></i> Politics</button>
+                <button class="category-btn" data-category="finance"><i class="fas fa-chart-line"></i> Finance</button>
+                <button class="category-btn" data-category="tech"><i class="fas fa-microchip"></i> Tech</button>
+                <button class="category-btn" data-category="rumors"><i class="fas fa-question-circle"></i> Rumors</button>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="main-content">
         <div class="container">
-            <!-- Trending Section -->
             <section class="trending-section">
                 <h2>🔥 Trending Now</h2>
-                <div id="trendingContainer" class="trending-slider">
-                    <!-- Populated by JavaScript -->
-                </div>
+                <div id="trendingContainer" class="trending-slider"></div>
             </section>
 
-            <!-- News Feed -->
             <section class="news-section">
                 <div class="news-header">
                     <h2>News Feed</h2>
                     <div class="sort-controls">
-                        <button id="sortBtn" class="sort-btn">
-                            <i class="fas fa-sort"></i> Latest
-                        </button>
+                        <button id="sortBtn" class="sort-btn"><i class="fas fa-sort"></i> Latest</button>
                         <select id="sourceFilter" class="source-filter">
                             <option value="all">All Sources</option>
-                            <option value="newsapi">NewsAPI</option>
+                            <option value="bbc">BBC</option>
+                            <option value="cnn">CNN</option>
+                            <option value="reuters">Reuters</option>
+                            <option value="techcrunch">TechCrunch</option>
                             <option value="reddit">Reddit</option>
-                            <option value="twitter">Twitter</option>
-                            <option value="twitter-rumors">Rumor Feeds</option>
+                            <option value="hackernews">Hacker News</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- Filters Applied Info -->
                 <div id="activeFilters" class="active-filters"></div>
 
-                <!-- News Grid -->
-                <div id="newsContainer" class="news-grid">
-                    <!-- Populated by JavaScript -->
-                </div>
+                <div id="newsContainer" class="news-grid"></div>
 
-                <!-- Loading State -->
                 <div id="loadingState" class="loading-state">
                     <div class="spinner"></div>
-                    <p>Fetching latest news...</p>
+                    <p>Fetching latest news from multiple sources...</p>
                 </div>
 
-                <!-- No Results -->
                 <div id="noResults" class="no-results" style="display: none;">
                     <i class="fas fa-inbox"></i>
-                    <p>No news found for your search</p>
+                    <p>No news found</p>
                 </div>
 
-                <!-- Load More Button -->
                 <div class="load-more-container">
-                    <button id="loadMoreBtn" class="load-more-btn">
+                    <button id="loadMoreBtn" class="load-more-btn" style="display:none;">
                         Load More <i class="fas fa-arrow-down"></i>
                     </button>
                 </div>
@@ -131,7 +94,6 @@
         </div>
     </main>
 
-    <!-- Footer -->
     <footer class="footer">
         <div class="container">
             <p>&copy; 2024 NewsFlow. Real-time News Aggregator. Built with ❤️</p>
@@ -143,10 +105,8 @@
         </div>
     </footer>
 
-    <!-- Toast Notifications -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <script src="api-config.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
