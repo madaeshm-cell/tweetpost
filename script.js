@@ -8,56 +8,45 @@ const newsApp = {
     currentSearch: '',
     currentSort: 'latest',
     currentSource: 'all',
-    isLoading: false,
     autoUpdateInterval: null,
-    updateIntervalTime: 60000, // 60 seconds (increased from 30)
+    updateIntervalTime: 60000,
 };
 
-// ==================== DOM ELEMENTS ====================
-const DOM = {
-    newsContainer: document.getElementById('newsContainer'),
-    loadingState: document.getElementById('loadingState'),
-    noResults: document.getElementById('noResults'),
-    loadMoreBtn: document.getElementById('loadMoreBtn'),
-    categoryBtns: document.querySelectorAll('.category-btn'),
-    searchInput: document.getElementById('searchInput'),
-    searchBtn: document.getElementById('searchBtn'),
-    themeToggle: document.getElementById('themeToggle'),
-    refreshBtn: document.getElementById('refreshBtn'),
-    lastUpdate: document.getElementById('lastUpdate'),
-    sortBtn: document.getElementById('sortBtn'),
-    sourceFilter: document.getElementById('sourceFilter'),
-    trendingContainer: document.getElementById('trendingContainer'),
-    activeFilters: document.getElementById('activeFilters'),
-    toastContainer: document.getElementById('toastContainer'),
-};
+const DOM = {};
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 NewsFlow App Initializing...');
+    console.log('🚀 NewsFlow Initializing...');
+    
+    // Initialize DOM references
+    DOM.newsContainer = document.getElementById('newsContainer');
+    DOM.loadingState = document.getElementById('loadingState');
+    DOM.noResults = document.getElementById('noResults');
+    DOM.loadMoreBtn = document.getElementById('loadMoreBtn');
+    DOM.categoryBtns = document.querySelectorAll('.category-btn');
+    DOM.searchInput = document.getElementById('searchInput');
+    DOM.searchBtn = document.getElementById('searchBtn');
+    DOM.themeToggle = document.getElementById('themeToggle');
+    DOM.refreshBtn = document.getElementById('refreshBtn');
+    DOM.lastUpdate = document.getElementById('lastUpdate');
+    DOM.sortBtn = document.getElementById('sortBtn');
+    DOM.sourceFilter = document.getElementById('sourceFilter');
+    DOM.trendingContainer = document.getElementById('trendingContainer');
+    DOM.activeFilters = document.getElementById('activeFilters');
+    DOM.toastContainer = document.getElementById('toastContainer');
     
     initializeTheme();
     attachEventListeners();
-    
-    // Fetch news with better error handling
-    fetchAllNews().then(() => {
-        startAutoUpdate();
-    }).catch(err => {
-        console.error('Initial fetch failed:', err);
-        showToast('Loading sample news...', 'warning');
-        loadSampleNews();
-        startAutoUpdate();
-    });
-    
-    console.log('✅ NewsFlow App Ready!');
+    fetchAllNews();
+    startAutoUpdate();
 });
 
-// ==================== THEME MANAGEMENT ====================
+// ==================== THEME ====================
 function initializeTheme() {
     const savedTheme = localStorage.getItem('theme') || 'light';
     if (savedTheme === 'dark') {
         document.body.classList.add('dark-mode');
-        updateThemeIcon();
+        DOM.themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
     }
 }
 
@@ -65,20 +54,12 @@ function toggleTheme() {
     document.body.classList.toggle('dark-mode');
     const isDark = document.body.classList.contains('dark-mode');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    updateThemeIcon();
+    DOM.themeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
     showToast('Theme updated', 'success');
-}
-
-function updateThemeIcon() {
-    const isDark = document.body.classList.contains('dark-mode');
-    DOM.themeToggle.innerHTML = isDark 
-        ? '<i class="fas fa-sun"></i>' 
-        : '<i class="fas fa-moon"></i>';
 }
 
 // ==================== EVENT LISTENERS ====================
 function attachEventListeners() {
-    // Category filtering
     DOM.categoryBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
@@ -89,32 +70,23 @@ function attachEventListeners() {
         });
     });
 
-    // Search
     DOM.searchBtn.addEventListener('click', performSearch);
     DOM.searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') performSearch();
     });
 
-    // Theme
     DOM.themeToggle.addEventListener('click', toggleTheme);
-
-    // Refresh
     DOM.refreshBtn.addEventListener('click', refreshNews);
-
-    // Load More
     DOM.loadMoreBtn.addEventListener('click', loadMoreNews);
 
-    // Sort
     DOM.sortBtn.addEventListener('click', () => {
         newsApp.currentSort = newsApp.currentSort === 'latest' ? 'oldest' : 'latest';
-        DOM.sortBtn.textContent = newsApp.currentSort === 'latest' 
+        DOM.sortBtn.innerHTML = newsApp.currentSort === 'latest' 
             ? '<i class="fas fa-sort"></i> Latest' 
             : '<i class="fas fa-sort"></i> Oldest';
-        newsApp.currentPage = 1;
         filterAndDisplayNews();
     });
 
-    // Source Filter
     DOM.sourceFilter.addEventListener('change', (e) => {
         newsApp.currentSource = e.target.value;
         newsApp.currentPage = 1;
@@ -126,427 +98,306 @@ function attachEventListeners() {
 async function fetchAllNews() {
     try {
         showLoadingState(true);
-        newsApp.allNews = [];
+        console.log('📡 Fetching news from multiple RSS feeds...');
 
-        console.log('📡 Fetching from multiple sources...');
-
-        // Create promises for all sources
         const sources = [
-            fetchFromNewsAPI(),
-            fetchFromRedddit(),
-            fetchRumors(),
+            fetchRSSFeed('http://feeds.bbci.co.uk/news/rss.xml', 'BBC', 'bbc'),
+            fetchRSSFeed('http://rss.cnn.com/rss/cnn_topstories.rss', 'CNN', 'cnn'),
+            fetchRSSFeed('http://feeds.reuters.com/reuters/topNews', 'Reuters', 'reuters'),
+            fetchRSSFeed('https://feeds.feedburner.com/TechCrunch/', 'TechCrunch', 'techcrunch'),
+            fetchRSSFeed('http://feeds.bbci.co.uk/news/technology/rss.xml', 'BBC Tech', 'bbc'),
+            fetchRSSFeed('http://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml', 'BBC Entertainment', 'bbc'),
+            fetchRSSFeed('http://feeds.bbci.co.uk/news/business/rss.xml', 'BBC Business', 'bbc'),
+            fetchRSSFeed('http://feeds.bbci.co.uk/news/politics/rss.xml', 'BBC Politics', 'bbc'),
+            fetchHackerNews(),
+            fetchReddit('news'),
+            fetchReddit('worldnews'),
+            fetchReddit('technology'),
+            fetchReddit('entertainment'),
+            fetchReddit('finance'),
+            fetchReddit('politics'),
         ];
 
-        // Use Promise.allSettled to handle failures gracefully
         const results = await Promise.allSettled(sources);
         
+        let allArticles = [];
         let successCount = 0;
+        
         results.forEach((result, index) => {
-            if (result.status === 'fulfilled') {
-                const articles = result.value || [];
-                if (articles.length > 0) {
-                    console.log(`✅ Source ${index + 1}: ${articles.length} articles`);
-                    newsApp.allNews = [...newsApp.allNews, ...articles];
-                    successCount++;
-                }
+            if (result.status === 'fulfilled' && result.value && result.value.length > 0) {
+                allArticles = allArticles.concat(result.value);
+                successCount++;
+                console.log(`✅ Source ${index + 1}: ${result.value.length} articles`);
             } else {
-                console.warn(`⚠️ Source ${index + 1} failed:`, result.reason.message);
+                console.warn(`⚠️ Source ${index + 1} failed`);
             }
         });
 
-        if (successCount === 0) {
-            console.error('❌ All sources failed!');
-            throw new Error('Unable to fetch from any news source');
+        if (allArticles.length === 0) {
+            console.warn('All sources failed, loading sample data');
+            loadSampleNews();
+            return;
         }
 
-        // Remove duplicates and sort
-        newsApp.allNews = removeDuplicates(newsApp.allNews);
-        newsApp.allNews = newsApp.allNews.sort((a, b) => 
-            new Date(b.publishedAt) - new Date(a.publishedAt)
-        );
+        // Remove duplicates and sort by date
+        newsApp.allNews = removeDuplicates(allArticles)
+            .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 
-        console.log(`✅ Successfully loaded ${newsApp.allNews.length} unique articles`);
+        console.log(`✅ Total: ${newsApp.allNews.length} articles from ${successCount} sources`);
         
         filterAndDisplayNews();
         updateTrending();
         updateLastUpdateTime();
-        showToast(`Loaded ${newsApp.allNews.length} articles`, 'success');
+        showToast(`Loaded ${newsApp.allNews.length} articles!`, 'success');
         
     } catch (error) {
-        console.error('❌ Critical Error:', error);
-        showToast('Failed to fetch news. Using fallback data...', 'error');
+        console.error('❌ Error:', error);
         loadSampleNews();
     } finally {
         showLoadingState(false);
     }
 }
 
-// ==================== FETCH FROM NEWSAPI ====================
-async function fetchFromNewsAPI() {
+// ==================== FETCH RSS FEED (using rss2json) ====================
+async function fetchRSSFeed(rssUrl, sourceName, sourceType) {
     try {
-        // Using a free API key - replace with your own
-        const apiKey = 'e84d76a31f934f83ac4d6e5ce76ce849';
+        const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}&count=20`;
+        const response = await fetch(apiUrl);
         
-        const endpoints = [
-            `https://newsapi.org/v2/top-headlines?country=us&pageSize=20&apiKey=${apiKey}`,
-            `https://newsapi.org/v2/everything?q=technology&sortBy=publishedAt&pageSize=20&apiKey=${apiKey}`,
-            `https://newsapi.org/v2/everything?q=entertainment&sortBy=publishedAt&pageSize=20&apiKey=${apiKey}`,
-            `https://newsapi.org/v2/everything?q=business&sortBy=publishedAt&pageSize=20&apiKey=${apiKey}`,
-        ];
-
-        let articles = [];
-
-        for (const endpoint of endpoints) {
-            try {
-                const response = await fetch(endpoint, {
-                    headers: {
-                        'Accept': 'application/json',
-                    }
-                });
-
-                if (!response.ok) {
-                    console.warn(`⚠️ NewsAPI returned ${response.status}`);
-                    if (response.status === 401) {
-                        throw new Error('Invalid NewsAPI key');
-                    }
-                    continue;
-                }
-
-                const data = await response.json();
-                
-                if (data.articles && Array.isArray(data.articles)) {
-                    articles = articles.concat(data.articles);
-                }
-            } catch (err) {
-                console.warn('Single endpoint failed:', err);
-                continue;
-            }
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
         }
-
-        if (articles.length === 0) {
-            console.warn('⚠️ NewsAPI: No articles found');
+        
+        const data = await response.json();
+        
+        if (data.status !== 'ok' || !data.items) {
             return [];
         }
 
-        return articles.map(article => ({
-            id: `newsapi-${article.url}`,
-            title: article.title || 'Untitled',
-            description: article.description || article.content || 'No description available',
-            urlToImage: article.urlToImage || null,
-            url: article.url,
-            source: article.source?.name || 'NewsAPI',
-            publishedAt: article.publishedAt || new Date().toISOString(),
-            category: categorizeArticle(article.title + ' ' + (article.description || '')),
-            isRumor: false,
-            sourceType: 'newsapi',
-            author: article.author,
+        return data.items.map((item, index) => ({
+            id: `${sourceType}-${Date.now()}-${index}`,
+            title: cleanText(item.title) || 'Untitled',
+            description: cleanText(stripHTML(item.description || item.content || '')).substring(0, 200),
+            urlToImage: item.thumbnail || item.enclosure?.link || extractImageFromContent(item.content) || null,
+            url: item.link,
+            source: sourceName,
+            publishedAt: item.pubDate || new Date().toISOString(),
+            category: categorizeArticle(item.title + ' ' + (item.description || '')),
+            isRumor: detectRumor(item.title + ' ' + (item.description || '')),
+            sourceType: sourceType,
+            author: item.author || sourceName,
         }));
-
     } catch (error) {
-        console.error('❌ NewsAPI Error:', error.message);
+        console.warn(`RSS ${sourceName} failed:`, error.message);
         return [];
     }
 }
 
-// ==================== FETCH FROM REDDIT ====================
-async function fetchFromRedddit() {
+// ==================== FETCH HACKER NEWS ====================
+async function fetchHackerNews() {
     try {
-        const subreddits = ['news', 'technology', 'worldnews', 'entertainment'];
-        let articles = [];
+        const response = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
+        if (!response.ok) throw new Error('HN failed');
+        
+        const ids = await response.json();
+        const top20 = ids.slice(0, 20);
+        
+        const stories = await Promise.all(
+            top20.map(id => 
+                fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
+                    .then(r => r.json())
+                    .catch(() => null)
+            )
+        );
 
-        for (const subreddit of subreddits) {
-            try {
-                const response = await fetch(
-                    `https://www.reddit.com/r/${subreddit}/hot.json?limit=25`,
-                    { 
-                        headers: { 
-                            'User-Agent': 'NewsFlow-App/1.0'
-                        }
-                    }
-                );
+        return stories
+            .filter(s => s && s.title)
+            .map(story => ({
+                id: `hn-${story.id}`,
+                title: story.title,
+                description: story.text ? stripHTML(story.text).substring(0, 200) : `${story.score} points • ${story.descendants || 0} comments`,
+                urlToImage: null,
+                url: story.url || `https://news.ycombinator.com/item?id=${story.id}`,
+                source: 'Hacker News',
+                publishedAt: new Date(story.time * 1000).toISOString(),
+                category: 'tech',
+                isRumor: false,
+                sourceType: 'hackernews',
+                author: story.by,
+            }));
+    } catch (error) {
+        console.warn('Hacker News failed:', error.message);
+        return [];
+    }
+}
+
+// ==================== FETCH REDDIT ====================
+async function fetchReddit(subreddit) {
+    try {
+        const response = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=15`);
+        if (!response.ok) throw new Error(`Reddit ${subreddit} failed`);
+        
+        const data = await response.json();
+        const posts = data.data?.children || [];
+
+        return posts
+            .filter(post => post.data && post.data.title)
+            .map(post => {
+                const d = post.data;
+                let image = null;
                 
-                if (!response.ok) {
-                    console.warn(`⚠️ Reddit ${subreddit}: Status ${response.status}`);
-                    continue;
+                if (d.preview?.images?.[0]?.source?.url) {
+                    image = d.preview.images[0].source.url.replace(/&amp;/g, '&');
+                } else if (d.thumbnail && d.thumbnail.startsWith('http')) {
+                    image = d.thumbnail;
                 }
                 
-                const data = await response.json();
-                const posts = data.data?.children || [];
-
-                const mappedPosts = posts
-                    .filter(post => !post.data.is_self) // Filter out text posts
-                    .map(post => ({
-                        id: `reddit-${post.data.id}`,
-                        title: post.data.title || 'Untitled',
-                        description: post.data.selftext?.substring(0, 200) || post.data.title,
-                        urlToImage: (post.data.preview?.images?.[0]?.source?.url || post.data.thumbnail)
-                            && (post.data.preview?.images?.[0]?.source?.url || post.data.thumbnail).startsWith('http') 
-                            ? (post.data.preview?.images?.[0]?.source?.url || post.data.thumbnail)
-                            : null,
-                        url: `https://reddit.com${post.data.permalink}`,
-                        source: `r/${subreddit}`,
-                        publishedAt: new Date(post.data.created_utc * 1000).toISOString(),
-                        category: categorizeArticle(post.data.title),
-                        isRumor: detectRumor(post.data.title),
-                        sourceType: 'reddit',
-                        author: post.data.author,
-                    }));
-
-                articles = articles.concat(mappedPosts);
-            } catch (err) {
-                console.warn(`⚠️ Reddit ${subreddit} failed:`, err.message);
-                continue;
-            }
-        }
-
-        console.log(`Reddit: Fetched ${articles.length} posts`);
-        return articles;
-
+                return {
+                    id: `reddit-${d.id}`,
+                    title: d.title,
+                    description: d.selftext ? d.selftext.substring(0, 200) : `${d.score} upvotes • ${d.num_comments} comments`,
+                    urlToImage: image,
+                    url: `https://reddit.com${d.permalink}`,
+                    source: `r/${subreddit}`,
+                    publishedAt: new Date(d.created_utc * 1000).toISOString(),
+                    category: subreddit === 'finance' ? 'finance' : 
+                              subreddit === 'technology' ? 'tech' :
+                              subreddit === 'entertainment' ? 'entertainment' :
+                              subreddit === 'politics' ? 'politics' :
+                              categorizeArticle(d.title),
+                    isRumor: detectRumor(d.title),
+                    sourceType: 'reddit',
+                    author: d.author,
+                };
+            });
     } catch (error) {
-        console.error('❌ Reddit Error:', error.message);
+        console.warn(`Reddit ${subreddit} failed:`, error.message);
         return [];
     }
 }
 
-// ==================== FETCH RUMORS ====================
-async function fetchRumors() {
-    try {
-        const apiKey = 'e84d76a31f934f83ac4d6e5ce76ce849';
-        const rumorQueries = ['unconfirmed reports', 'alleged', 'rumored', 'sources claim'];
-        let rumors = [];
-
-        for (const query of rumorQueries) {
-            try {
-                const response = await fetch(
-                    `https://newsapi.org/v2/everything?q="${query}"&sortBy=publishedAt&pageSize=15&apiKey=${apiKey}`,
-                    {
-                        headers: {
-                            'Accept': 'application/json',
-                        }
-                    }
-                );
-                
-                if (!response.ok) continue;
-                
-                const data = await response.json();
-                const articles = data.articles || [];
-
-                rumors = rumors.concat(articles.map(article => ({
-                    id: `rumor-${article.url}`,
-                    title: article.title || 'Untitled',
-                    description: article.description || 'Unconfirmed report',
-                    urlToImage: article.urlToImage || null,
-                    url: article.url,
-                    source: article.source?.name || 'Rumor Source',
-                    publishedAt: article.publishedAt || new Date().toISOString(),
-                    category: 'rumors',
-                    isRumor: true,
-                    sourceType: 'rumor',
-                    author: article.author,
-                })));
-            } catch (err) {
-                console.warn(`⚠️ Rumor query "${query}" failed`);
-                continue;
-            }
-        }
-
-        console.log(`Rumors: Fetched ${rumors.length} reports`);
-        return rumors;
-
-    } catch (error) {
-        console.error('❌ Rumor fetch error:', error.message);
-        return [];
-    }
+// ==================== HELPERS ====================
+function cleanText(text) {
+    if (!text) return '';
+    return text.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+               .replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
 }
 
-// ==================== LOAD SAMPLE NEWS (FALLBACK) ====================
+function stripHTML(html) {
+    if (!html) return '';
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.textContent || div.innerText || '';
+}
+
+function extractImageFromContent(content) {
+    if (!content) return null;
+    const match = content.match(/<img[^>]+src="([^"]+)"/);
+    return match ? match[1] : null;
+}
+
+function categorizeArticle(text) {
+    if (!text) return 'all';
+    const t = text.toLowerCase();
+
+    if (/\b(movie|film|music|celebrity|actor|actress|entertainment|oscar|grammy|netflix|hollywood|tv show|streaming)\b/i.test(t)) {
+        return 'entertainment';
+    }
+    if (/\b(election|congress|senate|president|politician|policy|government|parliament|vote|minister|democrat|republican)\b/i.test(t)) {
+        return 'politics';
+    }
+    if (/\b(stock|crypto|bitcoin|market|finance|economy|earnings|trading|investment|bank|currency|inflation|recession)\b/i.test(t)) {
+        return 'finance';
+    }
+    if (/\b(tech|ai|artificial intelligence|software|hardware|app|startup|coding|google|apple|microsoft|meta|programming)\b/i.test(t)) {
+        return 'tech';
+    }
+    return 'all';
+}
+
+function detectRumor(text) {
+    if (!text) return false;
+    const indicators = ['alleged', 'claimed', 'sources say', 'reportedly', 'unconfirmed', 'rumor', 'rumour', 'purportedly', 'supposedly', 'speculation', 'leaked'];
+    return indicators.some(i => text.toLowerCase().includes(i));
+}
+
+function removeDuplicates(articles) {
+    const seen = new Set();
+    return articles.filter(article => {
+        const key = (article.title || '').toLowerCase().trim().substring(0, 80);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+// ==================== SAMPLE NEWS FALLBACK ====================
 function loadSampleNews() {
-    console.log('📚 Loading sample news...');
-    
-    const sampleNews = [
-        {
-            id: 'sample-1',
-            title: 'Revolutionary AI Model Achieves Major Breakthrough',
-            description: 'Researchers announce groundbreaking advancement in artificial intelligence with new capabilities.',
-            urlToImage: 'https://via.placeholder.com/340x200?text=AI+Breakthrough',
-            url: '#',
-            source: 'Tech News',
-            publishedAt: new Date().toISOString(),
-            category: 'tech',
-            isRumor: false,
-            sourceType: 'sample',
-        },
-        {
-            id: 'sample-2',
-            title: 'Stock Market Hits Record High',
-            description: 'Financial markets reach all-time high amid economic optimism.',
-            urlToImage: 'https://via.placeholder.com/340x200?text=Stock+Market',
-            url: '#',
-            source: 'Finance Daily',
-            publishedAt: new Date().toISOString(),
-            category: 'finance',
-            isRumor: false,
-            sourceType: 'sample',
-        },
-        {
-            id: 'sample-3',
-            title: 'Celebrity Announces Surprise Project',
-            description: 'Major entertainment news as celebrity reveals unexpected collaboration.',
-            urlToImage: 'https://via.placeholder.com/340x200?text=Entertainment',
-            url: '#',
-            source: 'Entertainment Now',
-            publishedAt: new Date().toISOString(),
-            category: 'entertainment',
-            isRumor: false,
-            sourceType: 'sample',
-        },
-        {
-            id: 'sample-4',
-            title: 'Government Announces New Policy Initiative',
-            description: 'Officials unveil comprehensive plan to address key concerns.',
-            urlToImage: 'https://via.placeholder.com/340x200?text=Politics',
-            url: '#',
-            source: 'Political News',
-            publishedAt: new Date().toISOString(),
-            category: 'politics',
-            isRumor: false,
-            sourceType: 'sample',
-        },
-        {
-            id: 'sample-5',
-            title: '⚠️ Alleged Rumors About Industry Changes',
-            description: 'Unconfirmed reports suggest significant changes coming to the industry.',
-            urlToImage: 'https://via.placeholder.com/340x200?text=Rumors',
-            url: '#',
-            source: 'Rumor Mill',
-            publishedAt: new Date().toISOString(),
-            category: 'rumors',
-            isRumor: true,
-            sourceType: 'sample',
-        },
+    console.log('Loading sample news...');
+    newsApp.allNews = [
+        { id: 's1', title: 'AI Breakthrough Announced by Major Tech Company', description: 'Revolutionary AI model achieves unprecedented capabilities in language understanding.', urlToImage: 'https://picsum.photos/400/250?random=1', url: '#', source: 'Tech News', publishedAt: new Date().toISOString(), category: 'tech', isRumor: false, sourceType: 'sample' },
+        { id: 's2', title: 'Stock Market Reaches New Heights', description: 'Global markets surge to record levels amid economic optimism.', urlToImage: 'https://picsum.photos/400/250?random=2', url: '#', source: 'Finance Daily', publishedAt: new Date().toISOString(), category: 'finance', isRumor: false, sourceType: 'sample' },
+        { id: 's3', title: 'Major Movie Premieres This Weekend', description: 'Highly anticipated blockbuster hits theaters worldwide.', urlToImage: 'https://picsum.photos/400/250?random=3', url: '#', source: 'Entertainment Now', publishedAt: new Date().toISOString(), category: 'entertainment', isRumor: false, sourceType: 'sample' },
+        { id: 's4', title: 'Government Announces New Policy', description: 'Major legislative changes coming next month.', urlToImage: 'https://picsum.photos/400/250?random=4', url: '#', source: 'Political News', publishedAt: new Date().toISOString(), category: 'politics', isRumor: false, sourceType: 'sample' },
+        { id: 's5', title: 'Alleged Industry Shakeup Coming', description: 'Sources claim major changes in the industry are imminent.', urlToImage: 'https://picsum.photos/400/250?random=5', url: '#', source: 'Rumor Mill', publishedAt: new Date().toISOString(), category: 'rumors', isRumor: true, sourceType: 'sample' },
+        { id: 's6', title: 'New Smartphone Released', description: 'Latest flagship device features innovative camera technology.', urlToImage: 'https://picsum.photos/400/250?random=6', url: '#', source: 'Tech Daily', publishedAt: new Date().toISOString(), category: 'tech', isRumor: false, sourceType: 'sample' },
     ];
-
-    newsApp.allNews = sampleNews;
     filterAndDisplayNews();
     updateTrending();
     updateLastUpdateTime();
 }
 
-// ==================== CATEGORIZATION ====================
-function categorizeArticle(text) {
-    if (!text) return 'all';
-    
-    const textLower = text.toLowerCase();
-
-    if (textLower.match(/\b(movie|film|music|celebrity|actor|actress|entertainment|oscar|grammy|concert|netflix|hollywood)\b/i)) {
-        return 'entertainment';
-    }
-    if (textLower.match(/\b(election|congress|senate|president|politician|policy|government|parliament|vote|parliament|minister)\b/i)) {
-        return 'politics';
-    }
-    if (textLower.match(/\b(stock|crypto|bitcoin|market|finance|economy|earnings|trading|investment|bank|currency|forex)\b/i)) {
-        return 'finance';
-    }
-    if (textLower.match(/\b(tech|ai|artificial intelligence|software|hardware|app|startup|innovation|coding|programming|app|digital|computer|internet)\b/i)) {
-        return 'tech';
-    }
-
-    return 'all';
-}
-
-// ==================== RUMOR DETECTION ====================
-function detectRumor(text) {
-    if (!text) return false;
-    
-    const rumorIndicators = [
-        'alleged',
-        'claimed',
-        'sources say',
-        'reportedly',
-        'unconfirmed',
-        'rumor has it',
-        'purportedly',
-        'supposedly',
-        'it is believed',
-        'said to',
-        'believed to',
-    ];
-
-    return rumorIndicators.some(indicator => 
-        text.toLowerCase().includes(indicator)
-    );
-}
-
-// ==================== FILTERING & DISPLAY ====================
+// ==================== FILTER & DISPLAY ====================
 function filterAndDisplayNews() {
     let filtered = [...newsApp.allNews];
 
-    // Category filter
     if (newsApp.currentCategory !== 'all') {
         filtered = filtered.filter(news => {
-            if (newsApp.currentCategory === 'rumors') {
-                return news.isRumor;
-            }
+            if (newsApp.currentCategory === 'rumors') return news.isRumor;
             return news.category === newsApp.currentCategory;
         });
     }
 
-    // Search filter
     if (newsApp.currentSearch) {
-        const searchTerm = newsApp.currentSearch.toLowerCase();
+        const term = newsApp.currentSearch.toLowerCase();
         filtered = filtered.filter(news =>
-            (news.title && news.title.toLowerCase().includes(searchTerm)) ||
-            (news.description && news.description.toLowerCase().includes(searchTerm))
+            (news.title && news.title.toLowerCase().includes(term)) ||
+            (news.description && news.description.toLowerCase().includes(term))
         );
     }
 
-    // Source filter
     if (newsApp.currentSource !== 'all') {
         filtered = filtered.filter(news => news.sourceType === newsApp.currentSource);
     }
 
-    // Sort
     if (newsApp.currentSort === 'oldest') {
-        filtered = filtered.reverse();
+        filtered.reverse();
     }
 
     newsApp.filteredNews = filtered;
-    newsApp.currentPage = 1;
     displayNews();
     updateActiveFilters();
 }
 
 function displayNews() {
-    const startIndex = 0;
     const endIndex = newsApp.currentPage * newsApp.newsPerPage;
-    const newsToDisplay = newsApp.filteredNews.slice(startIndex, endIndex);
+    const newsToDisplay = newsApp.filteredNews.slice(0, endIndex);
 
-    if (newsToDisplay.length === 0 && newsApp.filteredNews.length === 0) {
+    if (newsToDisplay.length === 0) {
         DOM.newsContainer.innerHTML = '';
         DOM.noResults.style.display = 'flex';
-        DOM.loadingState.style.display = 'none';
         DOM.loadMoreBtn.style.display = 'none';
         return;
     }
 
     DOM.noResults.style.display = 'none';
-    DOM.loadingState.style.display = 'none';
-    DOM.newsContainer.innerHTML = newsToDisplay.map(news => createNewsCard(news)).join('');
+    DOM.newsContainer.innerHTML = newsToDisplay.map(createNewsCard).join('');
+    DOM.loadMoreBtn.style.display = endIndex < newsApp.filteredNews.length ? 'flex' : 'none';
 
-    // Update load more button
-    if (endIndex >= newsApp.filteredNews.length) {
-        DOM.loadMoreBtn.style.display = 'none';
-    } else {
-        DOM.loadMoreBtn.style.display = 'block';
-    }
-
-    // Attach click handlers
     document.querySelectorAll('.news-card').forEach(card => {
         card.addEventListener('click', () => {
             const url = card.dataset.url;
-            if (url !== '#') {
-                window.open(url, '_blank');
-            }
+            if (url && url !== '#') window.open(url, '_blank');
         });
     });
 }
@@ -554,95 +405,54 @@ function displayNews() {
 function createNewsCard(news) {
     const timeAgo = getTimeAgo(news.publishedAt);
     const rumorBadge = news.isRumor ? '<span class="rumor-badge">⚠️ RUMOR</span>' : '';
-    const categoryClass = news.category || 'all';
+    const category = news.category || 'all';
+    const imageUrl = news.urlToImage || `https://picsum.photos/400/250?random=${Math.floor(Math.random() * 1000)}`;
 
     return `
         <div class="news-card" data-url="${news.url || '#'}">
-            <img 
-                src="${news.urlToImage || 'https://via.placeholder.com/340x200?text=No+Image'}" 
-                alt="${news.title}"
-                class="news-image"
-                onerror="this.src='https://via.placeholder.com/340x200?text=No+Image&bg=667eea'"
-                loading="lazy"
-            >
+            <img src="${imageUrl}" alt="news" class="news-image" 
+                 onerror="this.src='https://picsum.photos/400/250?random=${Math.floor(Math.random() * 1000)}'" loading="lazy">
             <div class="news-card-content">
                 <div>
-                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
-                        <span class="news-category ${categoryClass}">${(news.category || 'general').toUpperCase()}</span>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                        <span class="news-category ${category}">${category.toUpperCase()}</span>
                         ${rumorBadge}
                     </div>
-                    <h3 class="news-title">${news.title || 'Untitled'}</h3>
-                    <p class="news-description">${news.description || 'No description available'}</p>
+                    <h3 class="news-title">${news.title}</h3>
+                    <p class="news-description">${news.description || 'Click to read more'}</p>
                 </div>
                 <div class="news-meta">
-                    <span class="news-source">
-                        <i class="fas fa-globe"></i>
-                        ${news.source || 'Unknown'}
-                    </span>
-                    <span class="news-time">
-                        <i class="fas fa-clock"></i>
-                        ${timeAgo}
-                    </span>
+                    <span class="news-source"><i class="fas fa-globe"></i> ${news.source}</span>
+                    <span class="news-time"><i class="fas fa-clock"></i> ${timeAgo}</span>
                 </div>
             </div>
         </div>
     `;
 }
 
-// ==================== TRENDING SECTION ====================
 function updateTrending() {
     const trending = newsApp.allNews.slice(0, 5);
-    
     if (trending.length === 0) {
-        DOM.trendingContainer.innerHTML = '<p style="padding: 20px;">Loading trending articles...</p>';
+        DOM.trendingContainer.innerHTML = '<p style="padding:20px;color:var(--text-secondary);">Loading trending news...</p>';
         return;
     }
 
     DOM.trendingContainer.innerHTML = trending.map(news => `
-        <div class="trending-card" onclick="window.open('${news.url || '#'}', '${news.url === '#' ? '' : '_blank'}')">
+        <div class="trending-card" onclick="${news.url && news.url !== '#' ? `window.open('${news.url}', '_blank')` : ''}">
             <div class="trending-card-content">
-                <span class="trending-badge">${(news.category || 'general').toUpperCase()}</span>
-                <h3 class="trending-title">${news.title || 'Untitled'}</h3>
-                <div class="trending-source">
-                    <i class="fas fa-globe"></i>
-                    ${news.source || 'Unknown Source'}
-                </div>
+                <span class="trending-badge">${(news.category || 'NEWS').toUpperCase()}</span>
+                <h3 class="trending-title">${news.title}</h3>
+                <div class="trending-source"><i class="fas fa-globe"></i> ${news.source}</div>
             </div>
         </div>
     `).join('');
 }
 
-// ==================== ACTIVE FILTERS ====================
 function updateActiveFilters() {
-    let filters = [];
-
-    if (newsApp.currentSearch) {
-        filters.push(`
-            <div class="filter-tag">
-                <i class="fas fa-search"></i> "${newsApp.currentSearch}"
-                <button onclick="clearSearch()">×</button>
-            </div>
-        `);
-    }
-
-    if (newsApp.currentCategory !== 'all') {
-        filters.push(`
-            <div class="filter-tag">
-                <i class="fas fa-filter"></i> ${newsApp.currentCategory}
-                <button onclick="clearCategoryFilter()">×</button>
-            </div>
-        `);
-    }
-
-    if (newsApp.currentSource !== 'all') {
-        filters.push(`
-            <div class="filter-tag">
-                <i class="fas fa-link"></i> ${newsApp.currentSource}
-                <button onclick="clearSourceFilter()">×</button>
-            </div>
-        `);
-    }
-
+    const filters = [];
+    if (newsApp.currentSearch) filters.push(`<div class="filter-tag"><i class="fas fa-search"></i> "${newsApp.currentSearch}" <button onclick="clearSearch()">×</button></div>`);
+    if (newsApp.currentCategory !== 'all') filters.push(`<div class="filter-tag"><i class="fas fa-filter"></i> ${newsApp.currentCategory} <button onclick="clearCategoryFilter()">×</button></div>`);
+    if (newsApp.currentSource !== 'all') filters.push(`<div class="filter-tag"><i class="fas fa-link"></i> ${newsApp.currentSource} <button onclick="clearSourceFilter()">×</button></div>`);
     DOM.activeFilters.innerHTML = filters.join('');
 }
 
@@ -654,7 +464,7 @@ function clearSearch() {
 
 function clearCategoryFilter() {
     newsApp.currentCategory = 'all';
-    document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('[data-category="all"]').classList.add('active');
     filterAndDisplayNews();
 }
@@ -665,145 +475,60 @@ function clearSourceFilter() {
     filterAndDisplayNews();
 }
 
-// ==================== SEARCH ====================
 function performSearch() {
     newsApp.currentSearch = DOM.searchInput.value.trim();
-    if (!newsApp.currentSearch) {
-        showToast('Please enter a search term', 'warning');
-        return;
-    }
     newsApp.currentPage = 1;
     filterAndDisplayNews();
-    showToast(`Searching for "${newsApp.currentSearch}"...`, 'success');
+    if (newsApp.currentSearch) showToast(`Searching "${newsApp.currentSearch}"`, 'success');
 }
 
-// ==================== LOAD MORE ====================
 function loadMoreNews() {
     newsApp.currentPage++;
     displayNews();
-    window.scrollBy({ top: 500, behavior: 'smooth' });
 }
 
-// ==================== REFRESH ====================
 function refreshNews() {
-    DOM.refreshBtn.classList.add('refresh-animate');
-    
-    fetchAllNews().then(() => {
-        showToast('News refreshed!', 'success');
-        DOM.refreshBtn.classList.remove('refresh-animate');
-    }).catch(err => {
-        showToast('Refresh failed. Retrying...', 'error');
-        setTimeout(refreshNews, 3000);
-    });
+    DOM.refreshBtn.style.transform = 'rotate(360deg)';
+    setTimeout(() => DOM.refreshBtn.style.transform = '', 500);
+    fetchAllNews();
 }
 
-// ==================== AUTO UPDATE ====================
 function startAutoUpdate() {
     newsApp.autoUpdateInterval = setInterval(() => {
-        console.log('🔄 Auto-updating news...');
-        fetchAllNews().catch(err => {
-            console.warn('Auto-update failed, will retry later');
-        });
+        console.log('🔄 Auto-update');
+        fetchAllNews();
     }, newsApp.updateIntervalTime);
 }
 
-function stopAutoUpdate() {
-    if (newsApp.autoUpdateInterval) {
-        clearInterval(newsApp.autoUpdateInterval);
-    }
-}
-
-// ==================== UTILITIES ====================
 function showLoadingState(show) {
     DOM.loadingState.style.display = show ? 'flex' : 'none';
 }
 
 function updateLastUpdateTime() {
     const now = new Date();
-    const time = now.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        second: '2-digit'
-    });
-    DOM.lastUpdate.textContent = `Last updated: ${time}`;
+    DOM.lastUpdate.textContent = `Updated: ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
 }
 
 function getTimeAgo(dateString) {
     try {
-        const date = new Date(dateString);
-        const now = new Date();
-        const seconds = Math.floor((now - date) / 1000);
-
+        const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
         if (seconds < 60) return 'just now';
-
-        let interval = seconds / 31536000;
-        if (interval > 1) return Math.floor(interval) + ' years ago';
-
-        interval = seconds / 2592000;
-        if (interval > 1) return Math.floor(interval) + ' months ago';
-
-        interval = seconds / 86400;
-        if (interval > 1) return Math.floor(interval) + ' days ago';
-
-        interval = seconds / 3600;
-        if (interval > 1) return Math.floor(interval) + ' hours ago';
-
-        interval = seconds / 60;
-        if (interval > 1) return Math.floor(interval) + ' minutes ago';
-
-        return Math.floor(seconds) + ' seconds ago';
-    } catch (e) {
-        return 'recently';
-    }
+        if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+        if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+        if (seconds < 2592000) return Math.floor(seconds / 86400) + 'd ago';
+        return Math.floor(seconds / 2592000) + 'mo ago';
+    } catch { return 'recently'; }
 }
 
-function removeDuplicates(articles) {
-    const seen = new Set();
-    const unique = [];
-    
-    articles.forEach(article => {
-        const key = (article.title || '').toLowerCase().trim();
-        if (key && !seen.has(key)) {
-            seen.add(key);
-            unique.push(article);
-        }
-    });
-    
-    return unique;
-}
-
-// ==================== TOAST NOTIFICATIONS ====================
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.innerHTML = `
-        <span>${message}</span>
-    `;
-    
+    toast.textContent = message;
     DOM.toastContainer.appendChild(toast);
-    
     setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease-in forwards';
+        toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
 
-// Add refresh animation
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideOut {
-        to {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-    }
-    .refresh-animate {
-        animation: spin 1s linear !important;
-    }
-`;
-document.head.appendChild(style);
-
-// Cleanup on page unload
-window.addEventListener('beforeunload', stopAutoUpdate);
-
-console.log('✅ Script loaded successfully');
+console.log('✅ NewsFlow Script Loaded');
