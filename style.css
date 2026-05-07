@@ -767,3 +767,13 @@ body {
         font-size: 16px;
     }
 }
+@keyframes slideOut {
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+.refresh-animate {
+    animation: spin 1s linear !important;
+}
